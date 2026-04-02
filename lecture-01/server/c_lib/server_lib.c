@@ -53,6 +53,7 @@ void handle_client(int fd, struct sockaddr_in *addr) {
         return;
     }
     buf[n] = '\0';
+    log_msg("req from %s:%d: %s", peer, peer_port, buf);
 
     char resp[32];
     int len;
@@ -61,6 +62,7 @@ void handle_client(int fd, struct sockaddr_in *addr) {
         uint64_t val;
         if (sscanf(buf, "%" SCNu64, &val) != 1) {
             const char *err = "error: expected integer N\n";
+            log_msg("resp to %s:%d: error: expected integer N", peer, peer_port);
             write(fd, err, strlen(err));
             close(fd);
             return;
@@ -72,6 +74,7 @@ void handle_client(int fd, struct sockaddr_in *addr) {
         len = snprintf(resp, sizeof(resp), "42\n");
     }
 
+    log_msg("resp to %s:%d: %.*s", peer, peer_port, len - 1, resp);
     write(fd, resp, len);
     close(fd);
 }

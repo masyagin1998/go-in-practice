@@ -156,6 +156,7 @@ static void coro_handle_client(void) {
     ssize_t n = coro_read(fd, buf, sizeof(buf) - 1);
     if (n <= 0) { close(fd); return; }
     buf[n] = '\0';
+    log_msg("req fd=%d: %s", fd, buf);
 
     if (g_mode == MODE_FIB) {
         uint64_t val = 0;
@@ -163,9 +164,11 @@ static void coro_handle_client(void) {
         uint64_t result = fib(val);
         char resp[32];
         int len = snprintf(resp, sizeof(resp), "%" PRIu64 "\n", result);
+        log_msg("resp fd=%d: %.*s", fd, len - 1, resp);
         coro_write(fd, resp, len);
     } else {
         coro_sleep(SLEEP_MS);
+        log_msg("resp fd=%d: 42", fd);
         coro_write(fd, "42\n", 3);
     }
 

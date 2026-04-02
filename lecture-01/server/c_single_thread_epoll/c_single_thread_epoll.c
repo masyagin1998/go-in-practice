@@ -70,6 +70,7 @@ int main(int argc, char **argv) {
                     close(c->fd); free(c); continue;
                 }
                 buf[n] = '\0';
+                log_msg("req fd=%d: %s", c->fd, buf);
 
                 if (g_mode == MODE_FIB) {
                     uint64_t val;
@@ -77,6 +78,7 @@ int main(int argc, char **argv) {
                         uint64_t result = fib(val); /* blocks event loop */
                         char resp[32];
                         int len = snprintf(resp, sizeof(resp), "%" PRIu64 "\n", result);
+                        log_msg("resp fd=%d: %.*s", c->fd, len - 1, resp);
                         write(c->fd, resp, len);
                     }
                     epoll_ctl(epfd, EPOLL_CTL_DEL, c->fd, NULL);
@@ -107,6 +109,7 @@ int main(int argc, char **argv) {
                 read(c->fd, &exp, sizeof(exp));
 
                 struct conn *client = c->peer;
+                log_msg("resp fd=%d: 42", client->fd);
                 write(client->fd, "42\n", 3);
 
                 epoll_ctl(epfd, EPOLL_CTL_DEL, c->fd, NULL);

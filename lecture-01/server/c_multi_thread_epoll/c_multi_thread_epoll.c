@@ -76,6 +76,7 @@ static void *worker_thread(void *arg) {
                     close(c->fd); free(c); continue;
                 }
                 buf[n] = '\0';
+                log_msg("req fd=%d: %s", c->fd, buf);
 
                 if (g_mode == MODE_FIB) {
                     uint64_t val;
@@ -83,6 +84,7 @@ static void *worker_thread(void *arg) {
                         uint64_t result = fib(val);
                         char resp[32];
                         int len = snprintf(resp, sizeof(resp), "%" PRIu64 "\n", result);
+                        log_msg("resp fd=%d: %.*s", c->fd, len - 1, resp);
                         write(c->fd, resp, len);
                     }
                     epoll_ctl(epfd, EPOLL_CTL_DEL, c->fd, NULL);
@@ -105,6 +107,7 @@ static void *worker_thread(void *arg) {
                 uint64_t exp;
                 read(c->fd, &exp, sizeof(exp));
                 struct conn *client = c->peer;
+                log_msg("resp fd=%d: 42", client->fd);
                 write(client->fd, "42\n", 3);
                 epoll_ctl(epfd, EPOLL_CTL_DEL, c->fd, NULL);
                 close(c->fd); close(client->fd);

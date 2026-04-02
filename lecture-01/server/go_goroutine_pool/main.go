@@ -40,16 +40,21 @@ func handleClient(conn net.Conn) {
 		return
 	}
 	line := strings.TrimSpace(scanner.Text())
+	log.Printf("req from %s: %s", conn.RemoteAddr(), line)
 
 	if mode == "fib" {
 		n, err := strconv.ParseUint(line, 10, 64)
 		if err != nil {
+			log.Printf("resp to %s: error: expected integer N", conn.RemoteAddr())
 			fmt.Fprintln(conn, "error: expected integer N")
 			return
 		}
-		fmt.Fprintln(conn, fib(n))
+		result := fib(n)
+		log.Printf("resp to %s: %d", conn.RemoteAddr(), result)
+		fmt.Fprintln(conn, result)
 	} else {
 		time.Sleep(100 * time.Millisecond)
+		log.Printf("resp to %s: 42", conn.RemoteAddr())
 		fmt.Fprintln(conn, 42)
 	}
 }

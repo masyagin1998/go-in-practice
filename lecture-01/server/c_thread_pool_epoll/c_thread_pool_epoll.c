@@ -155,6 +155,7 @@ int main(int argc, char **argv) {
                     close(ed->fd); free(ed); continue;
                 }
                 buf[n] = '\0';
+                log_msg("req fd=%d: %s", ed->fd, buf);
                 epoll_ctl(epfd, EPOLL_CTL_DEL, ed->fd, NULL);
 
                 struct work_item *w = malloc(sizeof(*w));
@@ -168,6 +169,7 @@ int main(int argc, char **argv) {
                 read(evfd, &count, sizeof(count));
                 struct done_item *d;
                 while ((d = done_try_pop()) != NULL) {
+                    log_msg("resp fd=%d: %.*s", d->fd, d->resp_len - 1, d->resp);
                     write(d->fd, d->resp, d->resp_len);
                     close(d->fd);
                     free(d);
