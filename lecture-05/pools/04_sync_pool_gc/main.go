@@ -62,7 +62,9 @@ func main() {
 	}
 	fmt.Printf("  New() вызовов: %d (объекты ещё в victim cache)\n", newCalls)
 
-	// Второй GC — victim cache тоже чистится.
+	// Два GC подряд: после Get/Put выше объекты снова в primary pool.
+	// 1-й GC: primary → victim (старый victim очищен).
+	// 2-й GC: victim → удалён. Теперь пул полностью пуст.
 	fmt.Println("\n--- Второй GC (victim cache → удалено) ---")
 	runtime.GC()
 	runtime.GC()
