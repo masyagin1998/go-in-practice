@@ -236,11 +236,13 @@ func sliceEscapesReturn() []int {
 }
 
 // sliceDynamicSize — размер известен только в рантайме.
-// Компилятор не может доказать, что влезет на стек → куча.
+// Несмотря на это, если слайс не убегает из функции,
+// современный Go (1.20+) может разместить его на стеке.
+// Компилятор использует runtime.stackalloc для динамических размеров.
 //
 //go:noinline
 func sliceDynamicSize(n int) int {
-	s := make([]int, n) // moved to heap (динамический размер)
+	s := make([]int, n) // does not escape (стек, даже при динамическом размере!)
 	for i := range s {
 		s[i] = i
 	}
@@ -346,13 +348,15 @@ func (w *ConsoleWriter) Write(data string) {
 }
 
 // interfaceMethodEscape — объект хранится в интерфейсной переменной.
-// Интерфейс — это пара (тип, указатель) → значение убегает.
+// Компилятор девиртуализирует и инлайнит вызов Write → сама w
+// остаётся на стеке. Но аргументы fmt.Fprintf (w.Prefix, "hello")
+// убегают через ...any внутри инлайненного Write.
 //
 //go:noinline
 func interfaceMethodEscape() {
-	w := ConsoleWriter{Prefix: "LOG"} // moved to heap
-	var iw Writer = &w                // побег через интерфейс
-	iw.Write("hello")
+	w := ConsoleWriter{Prefix: "LOG"} // стек (девиртуализация + инлайнинг)
+	var iw Writer = &w                // девиртуализируется в *ConsoleWriter
+	iw.Write("hello")                 // w.Prefix и "hello" убегают через fmt.Fprintf
 }
 
 // ============================================================================
@@ -568,7 +572,7 @@ func main() {
 	fmt.Printf("  smallSliceOnStack: %d (стек)\n", smallSliceOnStack())
 	s := sliceEscapesReturn()
 	fmt.Printf("  sliceEscapesReturn: %v (куча)\n", s)
-	fmt.Printf("  sliceDynamicSize(5): %d (куча — динамический размер)\n", sliceDynamicSize(5))
+	fmt.Printf("  sliceDynamicSize(5): %d (стек — динамический размер, но не убегает)\n", sliceDynamicSize(5))
 	fmt.Printf("  sliceTooBig: %d (куча — слишком большой)\n", sliceTooBig())
 	fmt.Println()
 
