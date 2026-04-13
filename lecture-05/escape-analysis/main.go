@@ -9,13 +9,18 @@
 // Лучше лишняя аллокация, чем dangling pointer.
 //
 // Сборка с выводом решений escape analysis:
-//   go build -gcflags="-m -l" .
+//   go build -gcflags="-m -l" main.go
 //
 // Подробный вывод (причины побега):
-//   go build -gcflags="-m -m -l" .
+//   go build -gcflags="-m -m -l" main.go
 //
 // Флаг -l отключает инлайнинг, чтобы видеть побег на уровне
 // каждой функции, а не после встраивания.
+//
+// ПРИМЕЧАНИЕ: в этом файле используется //go:noinline вместо -l,
+// чтобы каждая функция контролировала инлайнинг независимо.
+// При проверке через go build -gcflags="-m -l" результат тот же:
+// -l и //go:noinline дают одинаковый эффект для помеченных функций.
 //
 // Запуск:
 //   go run main.go
@@ -40,6 +45,9 @@ type Point struct {
 // returnPointer — возвращает указатель на локальную переменную.
 // Компилятор видит: p используется после выхода → куча.
 //
+// go build -gcflags="-m -l":
+//   moved to heap: p
+//
 //go:noinline
 func returnPointer() *Point {
 	p := Point{X: 1, Y: 2} // moved to heap: p
@@ -47,6 +55,9 @@ func returnPointer() *Point {
 }
 
 // returnValue — возвращает копию. Ничего не убегает → стек.
+//
+// go build -gcflags="-m -l":
+//   (нет вывода — ничего не убегает)
 //
 //go:noinline
 func returnValue() Point {
@@ -62,6 +73,9 @@ func returnValue() Point {
 // Компилятор не может гарантировать, что значение не будет
 // сохранено внутри fmt — поэтому кладёт в кучу.
 //
+// go build -gcflags="-m -l":
+//   42 escapes to heap
+//
 //go:noinline
 func printViaInterface() {
 	x := 42
@@ -71,6 +85,9 @@ func printViaInterface() {
 // printDirect — fmt.Fprintf с форматированием: аргументы тоже
 // передаются через ...any → всё равно побег.
 //
+// go build -gcflags="-m -l":
+//   "Go" escapes to heap
+//
 //go:noinline
 func printDirect() {
 	name := "Go"
@@ -78,6 +95,9 @@ func printDirect() {
 }
 
 // noInterface — без интерфейсов, всё на стеке.
+//
+// go build -gcflags="-m -l":
+//   (нет вывода — ничего не убегает)
 //
 //go:noinline
 func noInterface() int {
@@ -94,6 +114,9 @@ func noInterface() int {
 // не убегает из функции, компилятор размещает его на стеке.
 // new() — это подсказка, а не приказ. Компилятор умнее.
 //
+// go build -gcflags="-m -l":
+//   new(Point) does not escape
+//
 //go:noinline
 func newStaysOnStack() int {
 	p := new(Point) // несмотря на new — остаётся на стеке!
@@ -103,6 +126,9 @@ func newStaysOnStack() int {
 }
 
 // newEscapes — тот же new, но результат возвращается → куча.
+//
+// go build -gcflags="-m -l":
+//   new(Point) escapes to heap
 //
 //go:noinline
 func newEscapes() *Point {
@@ -114,6 +140,9 @@ func newEscapes() *Point {
 
 // compositeStaysOnStack — &Point{} тоже может жить на стеке,
 // если указатель не покидает функцию.
+//
+// go build -gcflags="-m -l":
+//   &Point{...} does not escape
 //
 //go:noinline
 func compositeStaysOnStack() int {
@@ -137,6 +166,10 @@ type Logger struct {
 // configAllOnStack — структура и её поле-указатель инициализируются
 // вместе, ничего не убегает → всё на стеке.
 //
+// go build -gcflags="-m -l":
+//   cfg.Logger.Prefix + ": " + cfg.Name escapes to heap
+//   (сама структура на стеке, убегает только результат конкатенации)
+//
 //go:noinline
 func configAllOnStack() string {
 	logger := Logger{Prefix: "[app]"} // стек
@@ -151,6 +184,10 @@ func configAllOnStack() string {
 // configFieldEscapes — Logger создаётся отдельно и возвращается
 // через Config → Logger убегает в кучу.
 //
+// go build -gcflags="-m -l":
+//   moved to heap: logger
+//   moved to heap: cfg
+//
 //go:noinline
 func configFieldEscapes() *Config {
 	logger := Logger{Prefix: "[app]"} // moved to heap (убегает через cfg)
@@ -163,6 +200,9 @@ func configFieldEscapes() *Config {
 
 // configOnlyInnerEscapes — Config на стеке, но Logger убегает,
 // потому что возвращается отдельно.
+//
+// go build -gcflags="-m -l":
+//   moved to heap: logger
 //
 //go:noinline
 func configOnlyInnerEscapes() *Logger {
@@ -182,6 +222,10 @@ func configOnlyInnerEscapes() *Logger {
 // closureEscapes — переменная count захвачена замыканием.
 // Замыкание живёт дольше функции → count убегает в кучу.
 //
+// go build -gcflags="-m -l":
+//   moved to heap: count
+//   func literal escapes to heap
+//
 //go:noinline
 func closureEscapes() func() int {
 	count := 0 // moved to heap (захвачена замыканием)
@@ -193,6 +237,9 @@ func closureEscapes() func() int {
 
 // closureNoEscape — замыкание используется и умирает внутри функции.
 // Захваченная переменная НЕ убегает.
+//
+// go build -gcflags="-m -l":
+//   func literal does not escape
 //
 //go:noinline
 func closureNoEscape() int {
@@ -212,6 +259,9 @@ func closureNoEscape() int {
 // smallSliceOnStack — маленький слайс с известным размером,
 // не возвращается → стек.
 //
+// go build -gcflags="-m -l":
+//   make([]int, 4) does not escape
+//
 //go:noinline
 func smallSliceOnStack() int {
 	s := make([]int, 4) // стек (маленький, не убегает)
@@ -228,6 +278,9 @@ func smallSliceOnStack() int {
 
 // sliceEscapesReturn — слайс возвращается → куча.
 //
+// go build -gcflags="-m -l":
+//   make([]int, 4) escapes to heap
+//
 //go:noinline
 func sliceEscapesReturn() []int {
 	s := make([]int, 4) // moved to heap (возвращается)
@@ -239,6 +292,9 @@ func sliceEscapesReturn() []int {
 // Несмотря на это, если слайс не убегает из функции,
 // современный Go (1.20+) может разместить его на стеке.
 // Компилятор использует runtime.stackalloc для динамических размеров.
+//
+// go build -gcflags="-m -l":
+//   make([]int, n) does not escape
 //
 //go:noinline
 func sliceDynamicSize(n int) int {
@@ -255,6 +311,9 @@ func sliceDynamicSize(n int) int {
 
 // sliceTooBig — слайс слишком большой для стека.
 // Даже если не убегает — компилятор перемещает в кучу.
+//
+// go build -gcflags="-m -l":
+//   make([]int, 100000) escapes to heap
 //
 //go:noinline
 func sliceTooBig() int {
@@ -273,6 +332,10 @@ func sliceTooBig() int {
 // всегда в куче, потому что их размер и количество динамические.
 // Итого: map = скрытые аллокации, даже если компилятор говорит "does not escape".
 //
+// go build -gcflags="-m -l":
+//   map[string]int{...} does not escape
+//   (но бакеты всё равно аллоцируются в куче — это скрыто от -m)
+//
 //go:noinline
 func mapInternalsOnHeap() int {
 	m := map[string]int{"a": 1, "b": 2} // hmap на стеке, но бакеты в куче
@@ -286,6 +349,9 @@ func mapInternalsOnHeap() int {
 // sendToChannel — данные, отправленные в канал, убегают.
 // Канал — разделяемая структура между горутинами;
 // компилятор не может гарантировать, когда данные будут прочитаны.
+//
+// go build -gcflags="-m -l":
+//   moved to heap: p
 //
 //go:noinline
 func sendToChannel() int {
@@ -302,6 +368,11 @@ func sendToChannel() int {
 
 // goroutineEscape — переменная, захваченная горутиной, убегает.
 // Горутина может пережить функцию-родителя → куча.
+//
+// go build -gcflags="-m -l":
+//   moved to heap: result
+//   moved to heap: wg
+//   func literal escapes to heap
 //
 //go:noinline
 func goroutineEscape() int {
@@ -324,6 +395,9 @@ var globalPoint *Point // глобальная переменная
 
 // assignToGlobal — присвоение адреса в глобальную переменную.
 // Глобальная переменная живёт вечно → данные убегают.
+//
+// go build -gcflags="-m -l":
+//   moved to heap: p
 //
 //go:noinline
 func assignToGlobal() {
@@ -348,13 +422,19 @@ func (w *ConsoleWriter) Write(data string) {
 }
 
 // interfaceMethodEscape — объект хранится в интерфейсной переменной.
-// Компилятор девиртуализирует и инлайнит вызов Write → сама w
-// остаётся на стеке. Но аргументы fmt.Fprintf (w.Prefix, "hello")
-// убегают через ...any внутри инлайненного Write.
+// Компилятор девиртуализирует вызов Write → видит конкретный тип
+// *ConsoleWriter и знает, что w не сохраняется. Сама w остаётся
+// на стеке. Убегают только аргументы fmt.Fprintf внутри Write:
+// w.Prefix и "hello" — через ...any.
+//
+// go build -gcflags="-m -l":
+//   devirtualizing iw.Write to *ConsoleWriter
+//   (w не убегает — leaking param content: w означает утечку содержимого,
+//    а не самой структуры; w.Prefix и data убегают внутри Write через fmt.Fprintf)
 //
 //go:noinline
 func interfaceMethodEscape() {
-	w := ConsoleWriter{Prefix: "LOG"} // стек (девиртуализация + инлайнинг)
+	w := ConsoleWriter{Prefix: "LOG"} // стек (девиртуализация)
 	var iw Writer = &w                // девиртуализируется в *ConsoleWriter
 	iw.Write("hello")                 // w.Prefix и "hello" убегают через fmt.Fprintf
 }
@@ -366,9 +446,13 @@ func interfaceMethodEscape() {
 // writeToWriter — передача []byte в io.Writer.
 // Сам слайс может убежать, потому что Writer — интерфейс.
 //
+// go build -gcflags="-m -l":
+//   leaking param: w
+//   ([]byte)("escape analysis demo\n") escapes to heap
+//
 //go:noinline
 func writeToWriter(w io.Writer) {
-	data := []byte("escape analysis demo\n") // может убежать через w
+	data := []byte("escape analysis demo\n") // убегает через w.Write
 	_, _ = w.Write(data)
 }
 
@@ -378,6 +462,9 @@ func writeToWriter(w io.Writer) {
 
 // arrayOnStack — массив фиксированного размера. В отличие от слайса,
 // массив — value type, его размер известен на этапе компиляции → стек.
+//
+// go build -gcflags="-m -l":
+//   (нет вывода — ничего не убегает)
 //
 //go:noinline
 func arrayOnStack() int {
@@ -399,6 +486,10 @@ func arrayOnStack() int {
 // stringConcatEscape — конкатенация строк создаёт новую строку.
 // Если результат передаётся в интерфейс (fmt.Println) → куча.
 //
+// go build -gcflags="-m -l":
+//   a + b escapes to heap
+//   c escapes to heap
+//
 //go:noinline
 func stringConcatEscape() {
 	a := "hello"
@@ -408,6 +499,9 @@ func stringConcatEscape() {
 }
 
 // stringConcatStack — конкатенация без побега → может быть на стеке.
+//
+// go build -gcflags="-m -l":
+//   a + b does not escape
 //
 //go:noinline
 func stringConcatStack() int {
@@ -426,12 +520,18 @@ func stringConcatStack() int {
 // Это значит, что вызывающая сторона может передать адрес
 // стековой переменной — и это будет безопасно.
 //
+// go build -gcflags="-m -l":
+//   p does not escape
+//
 //go:noinline
 func processPoint(p *Point) int {
 	return p.X*p.X + p.Y*p.Y // p does not escape
 }
 
 // callerCanUseStack — Point на стеке, даже при передаче по указателю.
+//
+// go build -gcflags="-m -l":
+//   (нет вывода — Point остаётся на стеке)
 //
 //go:noinline
 func callerCanUseStack() int {
@@ -452,6 +552,9 @@ type TreeNode struct {
 // buildTree — рекурсивное создание дерева.
 // Каждый узел возвращается по указателю → все узлы в куче.
 //
+// go build -gcflags="-m -l":
+//   moved to heap: node
+//
 //go:noinline
 func buildTree(depth int) *TreeNode {
 	if depth == 0 {
@@ -464,6 +567,9 @@ func buildTree(depth int) *TreeNode {
 }
 
 // treeSum — обход дерева. Ничего не создаёт → всё на стеке.
+//
+// go build -gcflags="-m -l":
+//   node does not escape
 //
 //go:noinline
 func treeSum(node *TreeNode) int {
@@ -479,6 +585,9 @@ func treeSum(node *TreeNode) int {
 
 // returnMultiple — возвращает указатель как часть кортежа → побег.
 //
+// go build -gcflags="-m -l":
+//   moved to heap: p
+//
 //go:noinline
 func returnMultiple() (*Point, error) {
 	p := Point{X: 1, Y: 2} // moved to heap
@@ -486,6 +595,9 @@ func returnMultiple() (*Point, error) {
 }
 
 // returnMultipleValue — возвращает значение, не указатель → стек.
+//
+// go build -gcflags="-m -l":
+//   (нет вывода — ничего не убегает)
 //
 //go:noinline
 func returnMultipleValue() (Point, error) {
@@ -504,6 +616,9 @@ type Pair struct {
 
 // fieldAddressNoEscape — берём адрес поля, но не выносим наружу.
 //
+// go build -gcflags="-m -l":
+//   (нет вывода — ничего не убегает)
+//
 //go:noinline
 func fieldAddressNoEscape() int {
 	pair := Pair{A: 10, B: 20}
@@ -513,6 +628,9 @@ func fieldAddressNoEscape() int {
 }
 
 // fieldAddressEscapes — адрес поля возвращается → вся структура в куче.
+//
+// go build -gcflags="-m -l":
+//   moved to heap: pair
 //
 //go:noinline
 func fieldAddressEscapes() *int {
