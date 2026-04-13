@@ -241,6 +241,10 @@ func closureEscapes() func() int {
 // go build -gcflags="-m -l":
 //   func literal does not escape
 //
+// go build -gcflags="-m" (без -l):
+//   inlining call to closureNoEscape.func1  (×2)
+//   (замыкание инлайнится → объекта нет → строки "does not escape" нет)
+//
 //go:noinline
 func closureNoEscape() int {
 	sum := 0
@@ -430,7 +434,13 @@ func (w *ConsoleWriter) Write(data string) {
 // go build -gcflags="-m -l":
 //   devirtualizing iw.Write to *ConsoleWriter
 //   (w не убегает — leaking param content: w означает утечку содержимого,
-//    а не самой структуры; w.Prefix и data убегают внутри Write через fmt.Fprintf)
+//    а не самой структуры; побег w.Prefix и data виден в строках Write)
+//
+// go build -gcflags="-m" (без -l):
+//   devirtualizing iw.Write to *ConsoleWriter
+//   inlining call to (*ConsoleWriter).Write
+//   w.Prefix escapes to heap       ← видно здесь, потому что Write инлайнился
+//   "hello" escapes to heap         ← видно здесь, потому что Write инлайнился
 //
 //go:noinline
 func interfaceMethodEscape() {
