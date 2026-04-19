@@ -1,4 +1,4 @@
-SUBDIRS = exec-spawn syscall-exec graceful-reload
+SUBDIRS = exec-spawn syscall-exec
 
 .PHONY: run clean
 

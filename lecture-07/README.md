@@ -10,7 +10,6 @@
 fork/                        # создание процессов в Go
   exec-spawn/                # os/exec.Command — идиоматический spawn
   syscall-exec/              # syscall.Exec — self-replace (10 поколений)
-  graceful-reload/           # fork+exec с наследованием listener fd (zero-downtime)
 
 ipc/                         # Go ↔ C, по возрастанию скорости/сложности:
   01_pipes/                  # shell pipe `./peer | go run .`
