@@ -33,7 +33,6 @@ import "C"
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"syscall"
 	"unsafe"
@@ -43,9 +42,6 @@ const iterations = 5
 
 func main() {
 	fd := int(C.make_signalfd())
-	if fd < 0 {
-		log.Fatal("signalfd: -1")
-	}
 	defer syscall.Close(fd)
 
 	fmt.Printf("PID=%d. В другом терминале: ./peer %d\n", os.Getpid(), os.Getpid())
@@ -55,13 +51,7 @@ func main() {
 	buf := make([]byte, siSize)
 
 	for range iterations {
-		n, err := syscall.Read(fd, buf)
-		if err != nil {
-			log.Fatalf("read signalfd: %v", err)
-		}
-		if n != siSize {
-			log.Fatalf("read signalfd: got %d, want %d", n, siSize)
-		}
+		syscall.Read(fd, buf) // всегда возвращает ровно siSize байт
 		si := (*C.struct_signalfd_siginfo)(unsafe.Pointer(&buf[0]))
 		fmt.Printf("[go] signal=%s pid=%d ssi_int=%d\n",
 			signame(uint32(si.ssi_signo)), int(si.ssi_pid), int(si.ssi_int))

@@ -16,8 +16,4 @@ func main() {
 	for scanner.Scan() {
 		fmt.Printf("[go] принял: %s\n", scanner.Text())
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintf(os.Stderr, "read: %v\n", err)
-		os.Exit(1)
-	}
 }

@@ -10,7 +10,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"syscall"
@@ -27,16 +26,10 @@ func main() {
 		return
 	}
 
-	self, err := os.Executable()
-	if err != nil {
-		log.Fatalf("executable: %v", err)
-	}
-
+	self, _ := os.Executable()
 	next := strconv.Itoa(gen + 1)
 	os.Setenv("GENERATION", next)
 
 	fmt.Printf("exec'имся в поколение %s (тот же PID)...\n", next)
-	if err := syscall.Exec(self, []string{self, "--re-exec"}, os.Environ()); err != nil {
-		log.Fatalf("exec: %v", err)
-	}
+	syscall.Exec(self, []string{self, "--re-exec"}, os.Environ())
 }
