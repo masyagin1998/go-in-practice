@@ -9,7 +9,10 @@
 
 int main(void) {
     for (int i = 0; i < ITERATIONS; ++i) {
-        printf("ping %d from C peer (pid=%d)\n", i, getpid());
+        char msg[64];
+        snprintf(msg, sizeof(msg), "ping server %d", i);
+        fprintf(stderr, "[peer %d] отправил \"%s\"\n", getpid(), msg);
+        printf("%s\n", msg);
         fflush(stdout); // без flush Go ничего не увидит до exit'а
         sleep(1);       // имитация "долгой работы" на стороне C
     }

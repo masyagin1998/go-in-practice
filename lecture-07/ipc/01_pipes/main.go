@@ -14,6 +14,6 @@ import (
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		fmt.Printf("[go] принял: %s\n", scanner.Text())
+		fmt.Printf("[go] получил %q\n", scanner.Text())
 	}
 }

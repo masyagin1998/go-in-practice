@@ -1,4 +1,4 @@
-SUBDIRS = 01_pipes 02_mkfifo 03_sockets 04_unix_sockets 05_queue 06_shmem 07_semaphore
+SUBDIRS = 01_pipes 02_pipes_zc 03_mkfifo 04_mkfifo_zc 05_sockets 06_sockets_zc 07_unix_sockets 08_unix_sockets_zc 09_queue 10_shmem 11_semaphore
 
 .PHONY: run clean
 

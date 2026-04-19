@@ -1,4 +1,4 @@
-SUBDIRS = graceful-shutdown sighup-reload signalfd thread-masking
+SUBDIRS = graceful-shutdown sighup-reload signalfd
 
 .PHONY: run clean
 

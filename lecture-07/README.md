@@ -13,12 +13,16 @@ fork/                        # создание процессов в Go
 
 ipc/                         # Go ↔ C, по возрастанию скорости/сложности:
   01_pipes/                  # shell pipe `./peer | go run .`
-  02_mkfifo/                 # named FIFO
-  03_sockets/                # TCP loopback
-  04_unix_sockets/           # AF_UNIX stream
-  05_queue/                  # POSIX message queue
-  06_shmem/                  # shared memory + busy-wait
-  07_semaphore/              # shmem + POSIX sem — самый быстрый
+  02_pipes_zc/               #   + vmsplice(SPLICE_F_GIFT) zero-copy на TX
+  03_mkfifo/                 # named FIFO
+  04_mkfifo_zc/              #   + vmsplice через FIFO
+  05_sockets/                # TCP loopback
+  06_sockets_zc/             #   + SO_ZEROCOPY + send(MSG_ZEROCOPY)
+  07_unix_sockets/           # AF_UNIX stream
+  08_unix_sockets_zc/        #   + SCM_RIGHTS + memfd — полный zero-copy
+  09_queue/                  # POSIX message queue
+  10_shmem/                  # shared memory + busy-wait
+  11_semaphore/              # shmem + POSIX sem — самый быстрый
 
 sync_shmem/                  # синхронизация в shared memory
   mutex_shared/              # pthread_mutex + PTHREAD_PROCESS_SHARED
@@ -28,7 +32,6 @@ signals/                     # сигналы: lifecycle + IPC с payload
   graceful-shutdown/         # SIGINT/SIGTERM → ctx.Cancel
   sighup-reload/             # SIGHUP → перечитать конфиг
   signalfd/                  # signals как fd, payload через sigqueue
-  thread-masking/            # per-thread маска: кто ловит, кто нет
 
 benchmark/                   # ping-pong round-trip: msgs/sec, ns/op
 ```

@@ -10,18 +10,12 @@ package main
 
 /*
 #include <signal.h>
+#include <stdio.h>
 #include <sys/signalfd.h>
 
-__attribute__((constructor))
-static void block_usr(void) {
-    sigset_t m;
-    sigemptyset(&m);
-    sigaddset(&m, SIGUSR1);
-    sigaddset(&m, SIGUSR2);
-    sigprocmask(SIG_BLOCK, &m, NULL);
-}
 
 static int make_signalfd(void) {
+    fprintf(stderr, "[c] make_signalfd: создаём fd для SIGUSR1/2\n");
     sigset_t m;
     sigemptyset(&m);
     sigaddset(&m, SIGUSR1);

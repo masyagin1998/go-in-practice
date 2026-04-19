@@ -36,23 +36,13 @@ static int init_robust(shared_t *s) {
     return rc;
 }
 
-// 0  — uncontended, peer mutex не держит
-// 1  — EOWNERDEAD: peer умер, владение перешло к нам
-// 2  — busy: peer держит mutex, попробуйте blocking lock
-// <0 — -errno
+// Возвращает errno как есть: 0 (взяли), EBUSY (кто-то держит),
+// EOWNERDEAD (прошлый владелец умер — владение уже наше, данные
+// возможно битые), прочее — неожиданная ошибка.
 static int trylock(shared_t *s) {
     int rc = pthread_mutex_trylock(&s->mutex);
-    if (rc == 0)          return 0;
-    if (rc == EOWNERDEAD) { pthread_mutex_consistent(&s->mutex); return 1; }
-    if (rc == EBUSY)      return 2;
-    return -rc;
-}
-
-static int lock(shared_t *s) {
-    int rc = pthread_mutex_lock(&s->mutex);
-    if (rc == EOWNERDEAD) { pthread_mutex_consistent(&s->mutex); return 1; }
-    if (rc != 0)          return -rc;
-    return 0;
+    if (rc == EOWNERDEAD) pthread_mutex_consistent(&s->mutex);
+    return rc;
 }
 
 static void unlock(shared_t *s) { pthread_mutex_unlock(&s->mutex); }
@@ -97,29 +87,22 @@ func main() {
 	fmt.Println("Shmem + robust mutex готовы. В другом терминале: ./peer")
 	fmt.Println("Peer возьмёт mutex и упадёт; мы опрашиваем trylock...")
 
-	// Polling: ждём, пока peer не схватит mutex (trylock → EBUSY).
-	// Затем blocking lock — он вернёт EOWNERDEAD, когда peer умрёт.
+	// Polling: крутим trylock, пока peer не упадёт с залоченным mutex'ом.
+	// 0          — свободен (peer ещё не взял или уже отпустил): отпускаем и ждём.
+	// EBUSY      — peer держит mutex, живой: ждём и пробуем снова.
+	// EOWNERDEAD — peer умер удерживая mutex: владение наше, восстанавливаем.
 	for {
 		switch rc := C.trylock(s); rc {
 		case 0:
-			// peer ещё не взял — отпускаем и ждём
 			C.unlock(s)
 			time.Sleep(50 * time.Millisecond)
-		case 1:
-			// EOWNERDEAD пойман на trylock'е (peer успел и взять, и упасть)
+		case C.EBUSY:
+			time.Sleep(50 * time.Millisecond)
+		case C.EOWNERDEAD:
 			handleRecovered(s)
 			return
-		case 2:
-			// peer держит mutex — блокирующий lock дождётся его смерти
-			if rc2 := C.lock(s); rc2 == 1 {
-				handleRecovered(s)
-			} else {
-				fmt.Printf("[go] lock вернул %d (ожидали EOWNERDEAD)\n", rc2)
-				C.unlock(s)
-			}
-			return
 		default:
-			log.Fatalf("[go] trylock error: errno=%d", -int(rc))
+			log.Fatalf("[go] trylock error: errno=%d", int(rc))
 		}
 	}
 }
