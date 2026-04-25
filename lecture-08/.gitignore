@@ -1,0 +1,24 @@
+# Бинарные артефакты профилирования — генерируются через make run.
+# Текстовые выжимки (*-top.txt, *-summary.txt, race.txt и т.п.) коммитим.
+*.pprof
+trace.out
+cpu.out
+core.*
+
+# Собранные бинарники. Для каждого демо go-модуль называется по теме,
+# и go build без флагов создаст исполняемый файл с тем же именем.
+/debugging/*/delve-basic
+/debugging/*/delve-goroutines
+/debugging/*/runtime-stack
+/debugging/*/core-dump
+/debugging/*/gobin
+/debugging/*/__debug_bin*
+/profiling/*/profile-heap
+/profiling/*/profile-trace
+/profiling/*/profile-cpu
+/profiling/*/profile-block-mutex
+/profiling/05_real_program/server
+/profiling/05_real_program/load/load
+/race/*/counter-race
+/race/*/flag-race
+/race/*/atomic-fix

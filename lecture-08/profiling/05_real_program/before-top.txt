@@ -1,0 +1,24 @@
+File: server
+Build ID: bae1089786ac19904a409716f3beb78d5a668e5b
+Type: cpu
+Time: 2026-04-25 00:08:32 MSK
+Duration: 5s, Total samples = 98s (1959.74%)
+Showing nodes accounting for 80.40s, 82.04% of 98s total
+Dropped 254 nodes (cum <= 0.49s)
+Showing top 15 nodes out of 25
+      flat  flat%   sum%        cum   cum%
+     0.01s  0.01%  0.01%     97.39s 99.38%  net/http.(*conn).serve
+     0.10s   0.1%  0.11%     96.70s 98.67%  main.search
+         0     0%  0.11%     96.70s 98.67%  net/http.(*ServeMux).ServeHTTP
+         0     0%  0.11%     96.70s 98.67%  net/http.HandlerFunc.ServeHTTP
+         0     0%  0.11%     96.70s 98.67%  net/http.serverHandler.ServeHTTP
+     0.01s  0.01%  0.12%     96.52s 98.49%  regexp.(*Regexp).MatchString (inline)
+     0.11s  0.11%  0.23%     96.51s 98.48%  regexp.(*Regexp).doMatch (inline)
+     0.49s   0.5%  0.73%     96.40s 98.37%  regexp.(*Regexp).doExecute
+    10.71s 10.93% 11.66%     95.91s 97.87%  regexp.(*Regexp).backtrack
+    25.63s 26.15% 37.82%     70.86s 72.31%  regexp.(*Regexp).tryBacktrack
+     2.29s  2.34% 40.15%     19.81s 20.21%  regexp/syntax.(*Inst).MatchRune (inline)
+     8.48s  8.65% 48.81%     18.24s 18.61%  regexp.(*bitState).push (inline)
+     9.86s 10.06% 58.87%     17.52s 17.88%  regexp/syntax.(*Inst).MatchRunePos
+    12.16s 12.41% 71.28%     17.26s 17.61%  regexp.(*inputString).step
+    10.55s 10.77% 82.04%     10.55s 10.77%  regexp.(*bitState).shouldVisit (inline)

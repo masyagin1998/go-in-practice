@@ -1,0 +1,24 @@
+File: server
+Build ID: c9be67f6f61fbe162f2a73a0c282872a629c7a2c
+Type: cpu
+Time: 2026-04-25 00:08:41 MSK
+Duration: 5s, Total samples = 42.41s (848.15%)
+Showing nodes accounting for 34.21s, 80.66% of 42.41s total
+Dropped 526 nodes (cum <= 0.21s)
+Showing top 15 nodes out of 107
+      flat  flat%   sum%        cum   cum%
+     0.03s 0.071% 0.071%     37.31s 87.97%  net/http.(*conn).serve
+         0     0% 0.071%     31.60s 74.51%  net/http.(*ServeMux).ServeHTTP
+         0     0% 0.071%     31.60s 74.51%  net/http.serverHandler.ServeHTTP
+     0.02s 0.047%  0.12%     31.51s 74.30%  net/http.HandlerFunc.ServeHTTP
+     0.49s  1.16%  1.27%     31.49s 74.25%  main.search
+    22.21s 52.37% 53.64%     22.30s 52.58%  strings.ToLower
+     0.16s  0.38% 54.02%      8.40s 19.81%  strings.Contains (inline)
+     0.23s  0.54% 54.56%      8.24s 19.43%  strings.Index (inline)
+     1.63s  3.84% 58.41%      8.03s 18.93%  internal/stringslite.Index
+     5.82s 13.72% 72.13%      5.82s 13.72%  indexbody
+     3.44s  8.11% 80.24%      3.44s  8.11%  internal/runtime/syscall/linux.Syscall6
+         0     0% 80.24%         3s  7.07%  syscall.RawSyscall6
+         0     0% 80.24%      2.77s  6.53%  syscall.Syscall
+     0.05s  0.12% 80.36%      2.71s  6.39%  runtime.schedule
+     0.13s  0.31% 80.66%      2.57s  6.06%  runtime.findRunnable
